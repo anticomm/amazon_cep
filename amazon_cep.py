@@ -99,7 +99,7 @@ def run():
     print(f"🔍 {len(items)} ürün bulundu.")
 
     products = []
-    for item in items[:5]:
+    for item in items:
         try:
             title = item.find_element(By.CSS_SELECTOR, "img.s-image").get_attribute("alt")
             price_whole = item.find_element(By.CSS_SELECTOR, ".a-price-whole").text.strip()
