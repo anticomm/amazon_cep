@@ -66,8 +66,9 @@ def load_sent_data():
     if os.path.exists(SENT_FILE):
         with open(SENT_FILE, "r", encoding="utf-8") as f:
             for line in f:
-                if "|" in line:
-                    title, price = line.strip().split("|")
+                parts = line.strip().split("|", 1)
+                if len(parts) == 2:
+                    title, price = parts
                     data[title.strip()] = price.strip()
     return data
 
@@ -143,6 +144,7 @@ def run():
         for p in products_to_send:
             send_message(p)
         save_sent_data(products_to_send)
+        print("📁 Dosya güncellendi:", SENT_FILE)
     else:
         print("⚠️ Yeni veya indirimli ürün bulunamadı.")
 
