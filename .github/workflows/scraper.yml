@@ -2,8 +2,11 @@ name: Amazon Elektronik Scraper
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # Her 30 dakikada bir çalışır
+    - cron: '*/30 * * * *'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   run-scraper:
@@ -32,3 +35,11 @@ jobs:
 
       - name: Scraper'ı çalıştır
         run: python amazon_cep.py
+
+      - name: Değişiklikleri commit et ve pushla
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add send_products.txt
+          git commit -m "Fiyat güncellemesi: send_products.txt"
+          git push
