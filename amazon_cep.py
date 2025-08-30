@@ -71,7 +71,7 @@ def load_sent_data():
                     data[title.strip()] = price.strip()
     return data
 
-def save_sent_data(products):
+def save_sent_data(products_to_send):
     with open(SENT_FILE, "w", encoding="utf-8") as f:
         for product in products:
             f.write(f"{product['title'].strip()} | {product['price'].strip()}\n")
