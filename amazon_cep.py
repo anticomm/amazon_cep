@@ -109,7 +109,7 @@ def run():
                 price = "Fiyat alınamadı"
 
             image = item.find_element(By.CSS_SELECTOR, "img.s-image").get_attribute("src")
-            link = item.find_element(By.CSS_SELECTOR, "a.a-link-normal").getAttribute("href")
+            link = item.find_element(By.CSS_SELECTOR, "a.a-link-normal").get_attribute("href")
 
             products.append({
                 "title": title,
