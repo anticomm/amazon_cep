@@ -2,6 +2,7 @@ import os
 import json
 import uuid
 import time
+import base64
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
@@ -12,15 +13,30 @@ from webdriver_manager.chrome import ChromeDriverManager
 from telegram_cep import send_message
 
 URL = "https://www.amazon.com.tr/s?i=electronics&rh=n%3A12466496031%2Cn%3A13709880031%2Cn%3A13709907031%2Cp_123%3A110955%257C32374&s=price-desc-rank"
-COOKIE_PATH = "cookie_cep.json"
+COOKIE_FILE = "cookie_cep.json"
 SENT_FILE = "send_products.txt"
 
+def decode_cookie_from_env():
+    cookie_b64 = os.getenv("COOKIE_B64")
+    if not cookie_b64:
+        print("❌ COOKIE_B64 bulunamadı.")
+        return False
+    try:
+        decoded = base64.b64decode(cookie_b64)
+        with open(COOKIE_FILE, "wb") as f:
+            f.write(decoded)
+        print("✅ Cookie dosyası oluşturuldu.")
+        return True
+    except Exception as e:
+        print(f"❌ Cookie decode hatası: {e}")
+        return False
+
 def load_cookies(driver):
-    if not os.path.exists(COOKIE_PATH):
-        print("❌ Cookie dosyası bulunamadı.")
+    if not os.path.exists(COOKIE_FILE):
+        print("❌ Cookie dosyası eksik.")
         return
 
-    with open(COOKIE_PATH, "r", encoding="utf-8") as f:
+    with open(COOKIE_FILE, "r", encoding="utf-8") as f:
         cookies = json.load(f)
 
     for cookie in cookies:
@@ -61,6 +77,9 @@ def save_sent_data(products):
             f.write(f"{product['title'].strip()} | {product['price'].strip()}\n")
 
 def run():
+    if not decode_cookie_from_env():
+        return
+
     driver = get_driver()
     driver.get("https://www.amazon.com.tr")
     time.sleep(2)
@@ -80,7 +99,7 @@ def run():
     print(f"🔍 {len(items)} ürün bulundu.")
 
     products = []
-    for item in items[:5]:  # İlk 5 ürünü kontrol et
+    for item in items[:5]:
         try:
             title = item.find_element(By.CSS_SELECTOR, "img.s-image").get_attribute("alt")
             price_whole = item.find_element(By.CSS_SELECTOR, ".a-price-whole").text.strip()
