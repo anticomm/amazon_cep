@@ -73,7 +73,7 @@ def load_sent_data():
 
 def save_sent_data(products_to_send):
     with open(SENT_FILE, "w", encoding="utf-8") as f:
-        for product in products:
+        for product in products_to_send:
             f.write(f"{product['title'].strip()} | {product['price'].strip()}\n")
 
 def run():
@@ -102,11 +102,14 @@ def run():
     for item in items:
         try:
             title = item.find_element(By.CSS_SELECTOR, "img.s-image").get_attribute("alt")
-            price_whole = item.find_element(By.CSS_SELECTOR, ".a-price-whole").text.strip()
-            price_fraction = item.find_element(By.CSS_SELECTOR, ".a-price-fraction").text.strip()
-            price = f"{price_whole},{price_fraction} TL"
+            try:
+                price_container = item.find_element(By.CSS_SELECTOR, ".a-price")
+                price = price_container.text.replace("\n", ",").strip() + " TL"
+            except:
+                price = "Fiyat alınamadı"
+
             image = item.find_element(By.CSS_SELECTOR, "img.s-image").get_attribute("src")
-            link = item.find_element(By.CSS_SELECTOR, "a.a-link-normal").get_attribute("href")
+            link = item.find_element(By.CSS_SELECTOR, "a.a-link-normal").getAttribute("href")
 
             products.append({
                 "title": title,
@@ -139,7 +142,7 @@ def run():
     if products_to_send:
         for p in products_to_send:
             send_message(p)
-        save_sent_data(products)
+        save_sent_data(products_to_send)
     else:
         print("⚠️ Yeni veya indirimli ürün bulunamadı.")
 
