@@ -13,7 +13,7 @@ from telegram_cep import send_message
 
 URL = "https://www.amazon.com.tr/s?i=electronics&rh=n%3A12466496031%2Cn%3A13709880031%2Cn%3A13709907031%2Cp_123%3A110955%257C32374&s=price-desc-rank"
 COOKIE_PATH = "cookie_cep.json"
-SENT_FILE = "send_products_elektronik.txt"
+SENT_FILE = "send_products.txt"
 
 def load_cookies(driver):
     if not os.path.exists(COOKIE_PATH):
@@ -45,16 +45,20 @@ def get_driver():
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/115 Safari/537.36")
     return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
-def load_sent_titles():
-    if not os.path.exists(SENT_FILE):
-        return set()
-    with open(SENT_FILE, "r", encoding="utf-8") as f:
-        return set(line.strip() for line in f)
+def load_sent_data():
+    data = {}
+    if os.path.exists(SENT_FILE):
+        with open(SENT_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                if "|" in line:
+                    title, price = line.strip().split("|")
+                    data[title.strip()] = price.strip()
+    return data
 
-def save_sent_titles(products):
-    with open(SENT_FILE, "a", encoding="utf-8") as f:
+def save_sent_data(products):
+    with open(SENT_FILE, "w", encoding="utf-8") as f:
         for product in products:
-            f.write(product["title"].strip() + "\n")
+            f.write(f"{product['title'].strip()} | {product['price'].strip()}\n")
 
 def run():
     driver = get_driver()
@@ -97,15 +101,28 @@ def run():
 
     driver.quit()
 
-    sent_titles = load_sent_titles()
-    new_products = [p for p in products if p["title"].strip() not in sent_titles]
+    sent_data = load_sent_data()
+    products_to_send = []
 
-    if new_products:
-        for product in new_products:
-            send_message(product)
-        save_sent_titles(new_products)
+    for product in products:
+        title = product["title"].strip()
+        price = product["price"].strip()
+
+        if title in sent_data:
+            old_price = sent_data[title]
+            if price != old_price:
+                print(f"📉 Fiyat düştü: {title} → {old_price} → {price}")
+                products_to_send.append(product)
+        else:
+            print(f"🆕 Yeni ürün: {title}")
+            products_to_send.append(product)
+
+    if products_to_send:
+        for p in products_to_send:
+            send_message(p)
+        save_sent_data(products)
     else:
-        print("⚠️ Yeni ürün bulunamadı.")
+        print("⚠️ Yeni veya indirimli ürün bulunamadı.")
 
 if __name__ == "__main__":
     run()
