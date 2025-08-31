@@ -65,14 +65,16 @@ def extract_price(item):
     selectors = [
         ".a-price .a-offscreen",
         ".a-price-whole",
-        "span.a-color-base"
+        "span.a-color-base",
+        "div.a-section.a-spacing-small.puis-padding-left-small.puis-padding-right-small span.a-color-base"
     ]
     for selector in selectors:
         try:
-            el = item.find_element(By.CSS_SELECTOR, selector)
-            price = el.get_attribute("innerText").replace("\xa0", "").replace("\u202f", "").strip()
-            if price and any(char.isdigit() for char in price):
-                return price
+            elements = item.find_elements(By.CSS_SELECTOR, selector)
+            for el in elements:
+                text = el.get_attribute("innerText").replace("\xa0", "").replace("\u202f", "").strip()
+                if "TL" in text and any(char.isdigit() for char in text):
+                    return text
         except:
             continue
     return "Fiyat alınamadı"
