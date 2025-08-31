@@ -16,6 +16,9 @@ URL = "https://www.amazon.com.tr/s?i=electronics&rh=n%3A12466496031%2Cn%3A137098
 COOKIE_FILE = "cookie_cep.json"
 SENT_FILE = "send_products.txt"
 
+def normalize(text):
+    return text.replace("\xa0", " ").replace("\u202f", " ").replace("\u200b", "").strip()
+
 def decode_cookie_from_env():
     cookie_b64 = os.getenv("COOKIE_B64")
     if not cookie_b64:
@@ -87,13 +90,13 @@ def load_sent_data():
                 parts = line.strip().split("|", 1)
                 if len(parts) == 2:
                     title, price = parts
-                    data[title.strip()] = price.strip()
+                    data[normalize(title)] = price.strip()
     return data
 
 def save_sent_data(products_to_send):
     existing = load_sent_data()
     for product in products_to_send:
-        title = product['title'].strip()
+        title = normalize(product['title'])
         price = product['price'].strip()
         existing[title] = price
     with open(SENT_FILE, "w", encoding="utf-8") as f:
@@ -146,7 +149,7 @@ def run():
     products_to_send = []
 
     for product in products:
-        title = product["title"].strip()
+        title = normalize(product["title"])
         price = product["price"].strip()
 
         if title in sent_data:
