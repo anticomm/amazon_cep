@@ -61,6 +61,22 @@ def get_driver():
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/115 Safari/537.36")
     return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
+def extract_price(item):
+    selectors = [
+        ".a-price .a-offscreen",
+        ".a-price-whole",
+        "span.a-color-base"
+    ]
+    for selector in selectors:
+        try:
+            el = item.find_element(By.CSS_SELECTOR, selector)
+            price = el.get_attribute("innerText").replace("\xa0", "").replace("\u202f", "").strip()
+            if price and any(char.isdigit() for char in price):
+                return price
+        except:
+            continue
+    return "Fiyat alınamadı"
+
 def load_sent_data():
     data = {}
     if os.path.exists(SENT_FILE):
@@ -73,9 +89,14 @@ def load_sent_data():
     return data
 
 def save_sent_data(products_to_send):
+    existing = load_sent_data()
+    for product in products_to_send:
+        title = product['title'].strip()
+        price = product['price'].strip()
+        existing[title] = price
     with open(SENT_FILE, "w", encoding="utf-8") as f:
-        for product in products_to_send:
-            f.write(f"{product['title'].strip()} | {product['price'].strip()}\n")
+        for title, price in existing.items():
+            f.write(f"{title} | {price}\n")
 
 def run():
     if not decode_cookie_from_env():
@@ -103,12 +124,7 @@ def run():
     for item in items:
         try:
             title = item.find_element(By.CSS_SELECTOR, "img.s-image").get_attribute("alt")
-            try:
-                # Gerçek fiyat genellikle burada saklanır
-                price = item.find_element(By.CSS_SELECTOR, ".a-price .a-offscreen").get_attribute("innerText").strip()
-            except:
-                   price = "Fiyat alınamadı"
-
+            price = extract_price(item)
             image = item.find_element(By.CSS_SELECTOR, "img.s-image").get_attribute("src")
             link = item.find_element(By.CSS_SELECTOR, "a.a-link-normal").get_attribute("href")
 
@@ -144,7 +160,7 @@ def run():
         for p in products_to_send:
             send_message(p)
         save_sent_data(products_to_send)
-        print("📁 Dosya güncellendi:", SENT_FILE)
+        print(f"📁 Dosya güncellendi: {len(products_to_send)} ürün eklendi/güncellendi.")
     else:
         print("⚠️ Yeni veya indirimli ürün bulunamadı.")
 
