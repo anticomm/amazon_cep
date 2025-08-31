@@ -107,7 +107,11 @@ def run():
                 price_container = item.find_element(By.CSS_SELECTOR, ".a-price")
                 price = price_container.text.replace("\n", ",").strip() + " TL"
             except:
-                price = "Fiyat alınamadı"
+            try:
+                price_container = item.find_element(By.CSS_SELECTOR, "span.a-color-base")
+                price = price_container.text.replace("\xa0", "").strip()
+    except:
+        price = "Fiyat alınamadı"
 
             image = item.find_element(By.CSS_SELECTOR, "img.s-image").get_attribute("src")
             link = item.find_element(By.CSS_SELECTOR, "a.a-link-normal").get_attribute("href")
