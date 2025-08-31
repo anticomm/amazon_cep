@@ -104,14 +104,15 @@ def run():
         try:
             title = item.find_element(By.CSS_SELECTOR, "img.s-image").get_attribute("alt")
             try:
-                price_container = item.find_element(By.CSS_SELECTOR, ".a-price")
-                price = price_container.text.replace("\n", ",").strip() + " TL"
+                # Gerçek fiyat genellikle burada saklanır
+                price = item.find_element(By.CSS_SELECTOR, ".a-price .a-offscreen").get_attribute("innerText").strip()
             except:
                 try:
+                    # Senin verdiğin alternatif yapı
                     price_raw = item.find_element(By.CSS_SELECTOR, "span.a-color-base").get_attribute("innerText")
                     price = price_raw.replace("\xa0", "").replace("\u202f", "").strip()
                 except:
-                    price = "Fiyat alınamadı"
+                       price = "Fiyat alınamadı"
 
             image = item.find_element(By.CSS_SELECTOR, "img.s-image").get_attribute("src")
             link = item.find_element(By.CSS_SELECTOR, "a.a-link-normal").get_attribute("href")
