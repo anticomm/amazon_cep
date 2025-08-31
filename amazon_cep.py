@@ -135,7 +135,7 @@ def run():
             link = item.find_element(By.CSS_SELECTOR, "a.a-link-normal").get_attribute("href")
 
             products.append({
-                "title": title,
+                "title": title,  # normalize edilmiş başlık
                 "price": price,
                 "image": image,
                 "link": link
@@ -150,7 +150,7 @@ def run():
     products_to_send = []
 
     for product in products:
-        title = product["title"]
+        title = product["title"]  # normalize edilmiş
         price = product["price"].strip()
 
         if title in sent_data:
