@@ -96,7 +96,7 @@ def load_sent_data():
 def save_sent_data(products_to_send):
     existing = load_sent_data()
     for product in products_to_send:
-        title = product['title']  # normalize edilmiş geliyor
+        title = normalize(product['title'])  # normalize garanti
         price = product['price'].strip()
         existing[title] = price
     with open(SENT_FILE, "w", encoding="utf-8") as f:
@@ -135,7 +135,7 @@ def run():
             link = item.find_element(By.CSS_SELECTOR, "a.a-link-normal").get_attribute("href")
 
             products.append({
-                "title": title,  # normalize edilmiş başlık
+                "title": title,
                 "price": price,
                 "image": image,
                 "link": link
@@ -150,11 +150,12 @@ def run():
     products_to_send = []
 
     for product in products:
-        title = product["title"]  # normalize edilmiş
+        title = normalize(product["title"])
         price = product["price"].strip()
 
-        if title in sent_data:
-            old_price = sent_data[title]
+        matched_title = next((k for k in sent_data if title == k), None)
+        if matched_title:
+            old_price = sent_data[matched_title]
             if price != old_price:
                 print(f"📉 Fiyat düştü: {title} → {old_price} → {price}")
                 products_to_send.append(product)
