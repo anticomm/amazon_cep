@@ -1,9 +1,68 @@
-# ... [önceki import ve sabit tanımlar aynı kalıyor]
+import os
+import json
+import uuid
+import time
+import base64
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
+from telegram_cep import send_message
+
+URL = "https://www.amazon.com.tr/s?i=electronics&rh=n%3A12466496031%2Cn%3A13709880031%2Cn%3A13709907031%2Cp_123%3A110955%257C32374&s=price-desc-rank"
+COOKIE_FILE = "cookie_cep.json"
+SENT_FILE = "send_products.txt"
 
 def normalize(text):
     return text.replace("\xa0", " ").replace("\u202f", " ").replace("\u200b", "").strip()
 
-# ... [cookie ve driver fonksiyonları aynı kalıyor]
+def decode_cookie_from_env():
+    cookie_b64 = os.getenv("COOKIE_B64")
+    if not cookie_b64:
+        print("❌ COOKIE_B64 bulunamadı.")
+        return False
+    try:
+        decoded = base64.b64decode(cookie_b64)
+        with open(COOKIE_FILE, "wb") as f:
+            f.write(decoded)
+        print("✅ Cookie dosyası oluşturuldu.")
+        return True
+    except Exception as e:
+        print(f"❌ Cookie decode hatası: {e}")
+        return False
+
+def load_cookies(driver):
+    if not os.path.exists(COOKIE_FILE):
+        print("❌ Cookie dosyası eksik.")
+        return
+
+    with open(COOKIE_FILE, "r", encoding="utf-8") as f:
+        cookies = json.load(f)
+
+    for cookie in cookies:
+        try:
+            driver.add_cookie({
+                "name": cookie["name"],
+                "value": cookie["value"],
+                "domain": cookie["domain"],
+                "path": cookie.get("path", "/")
+            })
+        except Exception as e:
+            print(f"⚠️ Cookie eklenemedi: {cookie.get('name')} → {e}")
+
+def get_driver():
+    profile_id = str(uuid.uuid4())
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--window-size=1920,1080")
+    options.add_argument(f"--user-data-dir=/tmp/chrome-profile-{profile_id}")
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/115 Safari/537.36")
+    return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
 def extract_price(item):
     selectors = [
@@ -37,7 +96,7 @@ def load_sent_data():
 def save_sent_data(products_to_send):
     existing = load_sent_data()
     for product in products_to_send:
-        title = product['title']  # zaten normalize edilmiş geliyor
+        title = product['title']  # normalize edilmiş geliyor
         price = product['price'].strip()
         existing[title] = price
     with open(SENT_FILE, "w", encoding="utf-8") as f:
