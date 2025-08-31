@@ -16,9 +16,6 @@ URL = "https://www.amazon.com.tr/s?i=electronics&rh=n%3A12466496031%2Cn%3A137098
 COOKIE_FILE = "cookie_cep.json"
 SENT_FILE = "send_products.txt"
 
-def normalize(text):
-    return text.replace("\xa0", " ").replace("\u202f", " ").replace("\u200b", "").strip()
-
 def decode_cookie_from_env():
     cookie_b64 = os.getenv("COOKIE_B64")
     if not cookie_b64:
@@ -89,19 +86,19 @@ def load_sent_data():
             for line in f:
                 parts = line.strip().split("|", 1)
                 if len(parts) == 2:
-                    title, price = parts
-                    data[normalize(title)] = price.strip()
+                    asin, price = parts
+                    data[asin.strip()] = price.strip()
     return data
 
 def save_sent_data(products_to_send):
     existing = load_sent_data()
     for product in products_to_send:
-        title = normalize(product['title'])  # normalize garanti
+        asin = product['asin'].strip()
         price = product['price'].strip()
-        existing[title] = price
+        existing[asin] = price
     with open(SENT_FILE, "w", encoding="utf-8") as f:
-        for title, price in existing.items():
-            f.write(f"{title} | {price}\n")
+        for asin, price in existing.items():
+            f.write(f"{asin} | {price}\n")
 
 def run():
     if not decode_cookie_from_env():
@@ -128,13 +125,14 @@ def run():
     products = []
     for item in items:
         try:
-            title_raw = item.find_element(By.CSS_SELECTOR, "img.s-image").get_attribute("alt")
-            title = normalize(title_raw)
+            asin = item.get_attribute("data-asin")
+            title = item.find_element(By.CSS_SELECTOR, "img.s-image").get_attribute("alt").strip()
             price = extract_price(item)
             image = item.find_element(By.CSS_SELECTOR, "img.s-image").get_attribute("src")
             link = item.find_element(By.CSS_SELECTOR, "a.a-link-normal").get_attribute("href")
 
             products.append({
+                "asin": asin,
                 "title": title,
                 "price": price,
                 "image": image,
@@ -150,17 +148,16 @@ def run():
     products_to_send = []
 
     for product in products:
-        title = normalize(product["title"])
+        asin = product["asin"]
         price = product["price"].strip()
 
-        matched_title = next((k for k in sent_data if title == k), None)
-        if matched_title:
-            old_price = sent_data[matched_title]
+        if asin in sent_data:
+            old_price = sent_data[asin]
             if price != old_price:
-                print(f"📉 Fiyat düştü: {title} → {old_price} → {price}")
+                print(f"📉 Fiyat düştü: {product['title']} → {old_price} → {price}")
                 products_to_send.append(product)
         else:
-            print(f"🆕 Yeni ürün: {title}")
+            print(f"🆕 Yeni ürün: {product['title']}")
             products_to_send.append(product)
 
     if products_to_send:
