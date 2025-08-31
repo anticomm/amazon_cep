@@ -108,8 +108,8 @@ def run():
                 price = price_container.text.replace("\n", ",").strip() + " TL"
             except:
                 try:
-                    price_container = item.find_element(By.CSS_SELECTOR, "span.a-color-base")
-                    price = price_container.text.replace("\xa0", "").strip()
+                    price_raw = item.find_element(By.CSS_SELECTOR, "span.a-color-base").get_attribute("innerText")
+                    price = price_raw.replace("\xa0", "").replace("\u202f", "").strip()
                 except:
                     price = "Fiyat alınamadı"
 
