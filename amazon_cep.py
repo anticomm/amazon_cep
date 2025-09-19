@@ -1,6 +1,5 @@
 import os
 import json
-import uuid
 import time
 import base64
 from selenium import webdriver
@@ -12,7 +11,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from telegram_cep import send_message
 
-URL = "https://www.amazon.com.tr/s?i=electronics&rh=n%3A12466496031%2Cn%3A13709880031%2Cn%3A13709907031%2Cp_123%3A110955%257C32374&s=price-desc-rank"
+URL = "https://www.amazon.com.tr/s?i=electronics&rh=n%3A12466496031%2Cn%3A13709880031%2Cn%3A13709907031%2Cp_123%3A110955%257C32374%2Cp_6%3AA1UNQM1SR2CHM%257CA215JX4S9CANSO&s=price-asc-rank&dc&ds=v1%3Arj0C%2BtvW3%2BLleDr9XD5WupLXeYS4uHca8L%2B9eNzYsc8"
 COOKIE_FILE = "cookie_cep.json"
 SENT_FILE = "send_products.txt"
 
@@ -35,10 +34,8 @@ def load_cookies(driver):
     if not os.path.exists(COOKIE_FILE):
         print("❌ Cookie dosyası eksik.")
         return
-
     with open(COOKIE_FILE, "r", encoding="utf-8") as f:
         cookies = json.load(f)
-
     for cookie in cookies:
         try:
             driver.add_cookie({
@@ -51,33 +48,43 @@ def load_cookies(driver):
             print(f"⚠️ Cookie eklenemedi: {cookie.get('name')} → {e}")
 
 def get_driver():
-    profile_id = str(uuid.uuid4())
     options = Options()
     options.add_argument("--headless")
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--window-size=1920,1080")
-    options.add_argument(f"--user-data-dir=/tmp/chrome-profile-{profile_id}")
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/115 Safari/537.36")
     return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
-def extract_price(item):
-    selectors = [
-        ".a-price .a-offscreen",
-        ".a-price-whole",
-        "span.a-color-base",
-        "div.a-section.a-spacing-small.puis-padding-left-small.puis-padding-right-small span.a-color-base"
-    ]
-    for selector in selectors:
+def get_price_from_detail(driver, url):
+    try:
+        driver.get(url)
+
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "body"))
+        )
+        time.sleep(2)
+
         try:
-            elements = item.find_elements(By.CSS_SELECTOR, selector)
-            for el in elements:
-                text = el.get_attribute("innerText").replace("\xa0", "").replace("\u202f", "").strip()
-                if "TL" in text and any(char.isdigit() for char in text):
-                    return text
+            variant_input = driver.find_element(By.CSS_SELECTOR, "input.a-button-input[aria-checked='true']")
+            driver.execute_script("arguments[0].click();", variant_input)
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, ".aok-offscreen"))
+            )
+            time.sleep(1)
         except:
-            continue
-    return "Fiyat alınamadı"
+            pass
+
+        price_elements = driver.find_elements(By.CSS_SELECTOR, ".aok-offscreen")
+        for el in price_elements:
+            text = el.get_attribute("innerText").strip()
+            if "TL" in text and any(char.isdigit() for char in text):
+                return text
+
+        return "Fiyat alınamadı"
+    except Exception as e:
+        print(f"⚠️ Detay sayfasından fiyat alınamadı: {e}")
+        return "Fiyat alınamadı"
 
 def load_sent_data():
     data = {}
@@ -122,24 +129,31 @@ def run():
     items = driver.find_elements(By.CSS_SELECTOR, "div[data-component-type='s-search-result']")
     print(f"🔍 {len(items)} ürün bulundu.")
 
-    products = []
+    product_links = []
     for item in items:
         try:
             asin = item.get_attribute("data-asin")
             title = item.find_element(By.CSS_SELECTOR, "img.s-image").get_attribute("alt").strip()
-            price = extract_price(item)
-            image = item.find_element(By.CSS_SELECTOR, "img.s-image").get_attribute("src")
             link = item.find_element(By.CSS_SELECTOR, "a.a-link-normal").get_attribute("href")
-
-            products.append({
+            image = item.find_element(By.CSS_SELECTOR, "img.s-image").get_attribute("src")
+            product_links.append({
                 "asin": asin,
                 "title": title,
-                "price": price,
-                "image": image,
-                "link": link
+                "link": link,
+                "image": image
             })
         except Exception as e:
-            print("⚠️ Ürün parse hatası:", e)
+            print("⚠️ Listeleme parse hatası:", e)
+            continue
+
+    products = []
+    for product in product_links:
+        try:
+            price = get_price_from_detail(driver, product["link"])
+            product["price"] = price
+            products.append(product)
+        except Exception as e:
+            print("⚠️ Detay sayfa hatası:", e)
             continue
 
     driver.quit()
