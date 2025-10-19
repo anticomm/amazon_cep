@@ -248,6 +248,7 @@ def run():
 
 if __name__ == "__main__":
     try:
+        check_timeout()
         run()
     except TimeoutError as e:
         print(f"⏹️ Zincir durduruldu: {e}")
