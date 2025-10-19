@@ -148,6 +148,7 @@ def run():
     check_timeout()
 
     driver.get(URL)
+    check_timeout()
     time.sleep(2)
     load_cookies(driver)
     check_timeout()
